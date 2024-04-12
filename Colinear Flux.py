@@ -317,205 +317,207 @@ def sigma2(sigma20, Ei, mDM, delta):
 
     return (sigma)
 
+def BlackHoleIntDensity(MBH):
+    '''
+    Function to determine the integrated number density of dark matter
+        around a black hole
+
+    Parameters
+    ----------
+    MBH : Mass of Black Hole [Solar Mass]
+
+    Returns
+    -------
+    tot_int_num_dens : column density of dark matter particles
+    '''
+    c = 3e8  # m s^{-1}
+    G = 6.67e-11  # kg^{-1} s^{-2} m^{3}
+    Msun = 2e30  # kg
+
+    MBH = 1e8 * Msun  # kg
+    Rschw = G*MBH/(c**2) * 100  # cm
+    Rmin = 4*Rschw  # cm
+    Rmax = 1e5*Rschw  # cm
+    Rchar = 10*Rschw  # cm (This is chosen arbitrarily)
+    rho0 = MBH / (6 * pi * Rchar**(7/3) *
+                  (Rmax**(2/3) - Rmin**(2/3)))  # kg cm^{-3}
+    rho0 = 5.6e26 * rho0  # GeV cm^{-3}
+    tot_integrated_density = (3/4) * rho0 * (Rchar**(7/3) /
+                                             Rmin**(4/3) - Rchar**(7/3)/Rmax**(4/3))  # GeV cm^{-2}
+    tot_int_num_dens = tot_integrated_density/mDM  # cm^{-2}
+    
+    return(tot_int_num_dens)
+    
+def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals):
+    '''
+    Function to calculate Rate of protons
+
+    Parameters
+    ----------
+    Gamma_B : Boost Factor of Blob
+    alpha_p : Power Law behavior in Blob
+    cp : Luminosity normalizing constant [s^{-1} sr^{-1}]
+    mu: cos(angle) of jet relative to line-of-sight
+    ESMvals: Proton energy values [GeV]
+
+    Returns
+    -------
+    dNSMdESM: Rate of protons produced [GeV s^{-1} sr^{-1}]
+    '''
+    Beta_B = np.sqrt(1-1/Gamma_B**2)
+    TSMvals = ESMvals - mp
+    Gamma_p_vals = ESMvals/mp
+    Beta_p_vals = sqrt(1 - 1/Gamma_p_vals**2)
+    
+    prefactor = 1/(4*pi) * (1 + TSMvals/mp)**(-alpha_p)
+    numerator = Gamma_B**(-alpha_p) * Beta_p_vals * (1 - Beta_B*Beta_p_vals*mu)**(-alpha_p)
+    denominator = np.sqrt((1 - Beta_B*Beta_p_vals*mu)**2 - (1 - Beta_p_vals**2) * (1-Beta_B**2))
+    dNSMdESM = cp*prefactor * numerator/denominator #GeV^{-1} s^{-1} sr^{-1}
+    
+    return(dNSMdESM)
+
+def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ, 
+                 mu = 1,dist = 1835.4 * (3.86e24), MBH = 1e8, Gamma_B = 20, alpha_p = 2, cp = 2.7e47):
+    '''
+    
+    Function to determine the fluxes of chi 1 and chi 2 at Earth
+    
+    Parameters
+    ----------
+    mDM : Dark matter ground state mass [GeV]
+    delta : Mass splitting [GeV]
+    gp_MZ : Proton coupling / boson mass [GeV^{-1}]
+    gChi_MZ : Dark Matter Coupling / boson mass [GeV^{-1}]
+    mu : cos(angle) of jet relative to line-of-sight. The default is 1.
+    dist: distance from black hole to Earth [cm]. Default is 1835.4 Mpc.
+    MBH : Mass of Black Hole [Solar Mass]. The default is 1e8.
+    Gamma_B :  Boost Factor of Blob. The default is 20.
+    alpha_p : Power Law behavior in Blob. The default is 2.
+    cp : Luminosity normalizing constant [s^{-1} sr^{-1}]. The default is 2.7e47.
+
+    Returns
+    -------
+    E1vals : Energies of chi_1 particles [GeV]
+    E2vals : Energies of chi_2 particles [GeV]
+    dPhidE1vals : Flux of chi_1 particles [GeV^{-1} cm^{-1} s^{-1}]
+    dphidE2vals : Flux of chi_2 particles [GeV^{-1} cm^{-1} s^{-1}]
+    '''
+    mp = 0.94  # GeV
+    sigmaSM0, sigma10, sigma20 = sigma0vals(gp_MZ,gChi_MZ,mp,mDM,delta)
+    E1thres = (4*(mDM+delta)**2 -2*mDM**2)/(2*mDM)#GeV (E1 energy to scatter)
+    Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
+    
+    ESMedges = np.logspace(np.log10(Epthres), 7, 200)  # GeV
+    E1edges = np.logspace(np.log10(E1thres), 5, 201)  # GeV
+    E2edges = np.logspace(np.log10(mDM + delta+2), 5, 202)  # GeV
+    low_E1_edges = np.logspace(np.log10(mDM),np.log10(E1thres),40)
+    ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
+    E1vals = np.sqrt(E1edges[:-1]*E1edges[1:])
+    E2vals = np.sqrt(E2edges[:-1]*E2edges[1:])
+    low_E1_vals = np.sqrt(low_E1_edges[:-1]*low_E1_edges[1:])
+    
+    dESM = ESMedges[1:] - ESMedges[:-1]
+    dE1 = E1edges[1:] - E1edges[:-1]
+    dE2 = E2edges[1:] - E2edges[:-1]
+    dE1_low = low_E1_edges[1:] - low_E1_edges[:-1]
+    
+    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals) #GeV s^{-1} sr^{-1}
+    dN1dE1 = np.zeros(len(E1vals)) #GeV^{-1} s^{-1} sr^{-1}
+    dN2dE2 = np.zeros(len(E2vals)) #GeV^{-1} s^{-1} sr^{-1}
+    total_array = np.append(np.append(dN1dE1,dN2dE2),dNSMdESM)
+    
+    tot_int_num_dens = BlackHoleIntDensity(MBH)
+    
+    sigma_1_vals = sigma1(sigma10, E1vals, mDM, delta) #cm^2
+    sigma_2_vals = sigma2(sigma20, E2vals, mDM, delta) #cm^2
+    dsigma1dE2_vals = np.transpose(dsigma1dE2(sigma10, np.transpose(np.array([E1vals])), E2vals, mDM, delta)\
+        *np.transpose(np.array([dE1])))
+    dsigma2dE1_vals = np.transpose(dsigma2dE1(sigma20, np.transpose(np.array([E2vals])), E1vals, mDM, delta)\
+        *np.transpose(np.array([dE2])))
+    dsigma2dE2_vals = np.transpose(dsigma2dE2(sigma20, np.transpose(np.array([E2vals])), E2vals, mDM, delta)\
+        *np.transpose(np.array([dE2])))
+    dsigmadE2SM_vals = np.transpose(dsigmadE2SM(sigmaSM0, np.transpose(np.array([ESMvals])), E2vals, mp, mDM, delta)\
+        *np.transpose(np.array([dESM])))
+        
+    full_homo_matrix = np.concatenate(
+        (np.concatenate((-np.diag(sigma_1_vals), 2*dsigma1dE2_vals, np.zeros((len(ESMvals),len(E1vals)))), axis = 0),
+        np.concatenate((dsigma2dE1_vals,-np.diag(sigma_2_vals) + dsigma2dE2_vals,np.zeros((len(ESMvals),len(E2vals)))), axis = 0),
+        np.concatenate((np.zeros((len(E1vals),len(ESMvals))),dsigmadE2SM_vals,np.zeros((len(ESMvals),len(ESMvals)))), axis = 0)),
+        axis = 1)
+
+
+    full_homo_matrix = full_homo_matrix*tot_int_num_dens
+
+    eig_vals, eig_matrix = np.linalg.eig(full_homo_matrix)
+
+    print('Eigen rank', np.linalg.matrix_rank(eig_matrix))
+
+    eig_inv_matrix = np.linalg.inv(eig_matrix)
+
+    #Check that the eigenvalues are correct
+    for i in range(len(eig_vals)):
+        error = np.matmul(full_homo_matrix,eig_matrix[:,i]) - eig_vals[i] * eig_matrix[:,i]
+        
+        if np.abs(np.dot(error,error)) > 0.001:
+            print("EigenValue Problem")
+
+    coeffs = np.array([])
+    test_array = np.zeros(len(total_array))
+    final_array = np.zeros(len(total_array))
+
+    for i in range(len(eig_vals)):
+        coeffs = np.append(coeffs,np.dot(total_array,eig_inv_matrix[i,:]))
+        test_array += eig_matrix[:,i] * coeffs[i]
+        final_array += eig_matrix[:,i] * coeffs[i] * exp(eig_vals[i])
+
+    #low Energy Vals
+    dsigma2dE1_vals_low = np.transpose(dsigma2dE1(sigma20, np.transpose(np.array([E2vals])), low_E1_vals, mDM, delta)\
+        *np.transpose(np.array([dE2])))
+    low_matrix = np.concatenate((np.zeros((len(low_E1_vals),len(E1vals))),
+                                 dsigma2dE1_vals_low, np.zeros((len(low_E1_vals),len(ESMvals)))),axis = 1)
+
+    low_matrix = low_matrix * tot_int_num_dens
+
+    low_final_array = np.zeros(len(low_E1_vals))
+
+    for i in range(len(eig_vals)):
+        if eig_vals[i] == 0:
+            low_final_array += np.matmul(low_matrix,eig_matrix[:,i]) * coeffs[i]
+        else:
+            low_final_array += np.matmul(low_matrix,eig_matrix[:,i]) * coeffs[i]\
+                *(1/eig_vals[i]) * (exp(eig_vals[i]) -1)
+            
+    eig_dN1dE1 = final_array[0:len(dN1dE1)]
+    eig_dN2dE2 = final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
+    
+    E1vals = np.append(low_E1_vals,E1vals)
+    dN1dE1 = np.append(low_final_array,eig_dN1dE1)
+    
+    dPhi1dE1 = dN1dE1/dist**2
+    dPhi2dE2 = eig_dN2dE2/dist**2
+    
+    return(E1vals, E2vals, dPhi1dE1,dPhi2dE2)
+    
+    
+    
+   
+    
+
 #MODEL Parameters
 mDM = 1  # GeV
 delta = 1  # GeV
 mp = 0.94  # GeV
 gp_MZ = 1e-3 #GeV^{-1}
-gChi_MZ = 1e-2 #GeV^{-1}
+gChi_MZ = 1 #GeV^{-1}
 
-filename = "ExampleFilename.csv"
+E1vals, E2vals, dPhi1dE1, dPhi2dE2 = Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ)
 
-
-sigmaSM0, sigma10, sigma20 = sigma0vals(gp_MZ,gChi_MZ,mp,mDM,delta)
-
-
-E1thres = (4*(mDM+delta)**2 -2*mDM**2)/(2*mDM)#GeV (E1 energy to scatter)
-Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
-
-
-
-# Black Hole DM Properties
-c = 3e8  # m s^{-1}
-G = 6.67e-11  # kg^{-1} s^{-2} m^{3}
-Msun = 2e30  # kg
-
-MBH = 1e8 * Msun  # kg
-Rschw = G*MBH/(c**2) * 100  # cm
-Rmin = 4*Rschw  # cm
-Rmax = 1e5*Rschw  # cm
-Rchar = 10*Rschw  # cm (This is chosen arbitrarily)
-rho0 = MBH / (6 * pi * Rchar**(7/3) *
-              (Rmax**(2/3) - Rmin**(2/3)))  # kg cm^{-3}
-rho0 = 5.6e26 * rho0  # GeV cm^{-3}
-
-print('r0', rho0, "GeV cm^{3}")
-
-tot_integrated_density = (3/4) * rho0 * (Rchar**(7/3) /
-                                         Rmin**(4/3) - Rchar**(7/3)/Rmax**(4/3))  # GeV cm^{-2}
-tot_int_num_dens = tot_integrated_density/mDM  # cm^{-2}
-print('tot integrated density', tot_integrated_density, "GeV cm^{-2}")
-print('tot integrated number density', tot_int_num_dens, "cm^{-2}")
-
-#AGN Properties
-Gamma_B = 20
-Beta_B = np.sqrt(1-1/Gamma_B**2)
-cp = 2.7e47 #GeV^{-1} s^{-1}
-alpha_p = 2
-dist = 1835.4 * (3.86e24) # cm
-
-ESMedges = np.logspace(np.log10(Epthres), 7, 600)  # GeV
-E1edges = np.logspace(np.log10(E1thres), 5, 601)  # GeV
-#E1edges = np.logspace(0, 5, 201)  # GeV
-E2edges = np.logspace(np.log10(mDM + delta+2), 5, 602)  # GeV
-
-low_E1_edges = np.logspace(np.log10(mDM),np.log10(E1thres),40)
-
-ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
-TSMvals = ESMvals - mp
-Gamma_p_vals = ESMvals/mp
-Beta_p_vals = sqrt(1 - 1/Gamma_p_vals**2)
-E1vals = np.sqrt(E1edges[:-1]*E1edges[1:])
-E2vals = np.sqrt(E2edges[:-1]*E2edges[1:])
-low_E1_vals = np.sqrt(low_E1_edges[:-1]*low_E1_edges[1:])
-
-dESM = ESMedges[1:] - ESMedges[:-1]
-dE1 = E1edges[1:] - E1edges[:-1]
-dE2 = E2edges[1:] - E2edges[:-1]
-dE1_low = low_E1_edges[1:] - low_E1_edges[:-1]
-
-mu = 1 #Assume that all scattering is colinear
-alpha_p = 2 
-prefactor = 1/(4*pi) * (1 + TSMvals/mp)**(-alpha_p)
-numerator = Gamma_B**(-alpha_p) * Beta_p_vals * (1 - Beta_B*Beta_p_vals*mu)**(-alpha_p)
-denominator = np.sqrt((1 - Beta_B*Beta_p_vals*mu)**2 - (1 - Beta_p_vals**2) * (1-Beta_B**2))
-
-dNSMdESM = prefactor * numerator/denominator #GeV^{-1} s^{-1} sr^{-1}
-dN1dE1 = np.zeros(len(E1vals)) #GeV^{-1} s^{-1} sr^{-1}
-dN2dE2 = np.zeros(len(E2vals)) #GeV^{-1} s^{-1} sr^{-1}
-
-N_tot_list = np.array([])
-fig1 = plt.figure("Chi 1")
-fig2 = plt.figure("Chi 2")
-
-dN1dE1 = np.zeros(len(E1vals)) #GeV^{-1} s^{-1} sr^{-1}
-dN2dE2 = np.zeros(len(E2vals)) #GeV^{-1} s^{-1} sr^{-1}
-
-total_array = np.append(np.append(dN1dE1,dN2dE2),dNSMdESM)
-
-x = 0
-dx = tot_int_num_dens/1e5
-
-sigma_1_vals = sigma1(sigma10, E1vals, mDM, delta) #cm^2
-sigma_2_vals = sigma2(sigma20, E2vals, mDM, delta) #cm^2
-dsigma1dE2_vals = np.transpose(dsigma1dE2(sigma10, np.transpose(np.array([E1vals])), E2vals, mDM, delta)\
-    *np.transpose(np.array([dE1])))
-dsigma2dE1_vals = np.transpose(dsigma2dE1(sigma20, np.transpose(np.array([E2vals])), E1vals, mDM, delta)\
-    *np.transpose(np.array([dE2])))
-dsigma2dE2_vals = np.transpose(dsigma2dE2(sigma20, np.transpose(np.array([E2vals])), E2vals, mDM, delta)\
-    *np.transpose(np.array([dE2])))
-dsigmadE2SM_vals = np.transpose(dsigmadE2SM(sigmaSM0, np.transpose(np.array([ESMvals])), E2vals, mp, mDM, delta)\
-    *np.transpose(np.array([dESM])))
-    
-full_homo_matrix = np.concatenate(
-    (np.concatenate((-np.diag(sigma_1_vals), 2*dsigma1dE2_vals, np.zeros((len(ESMvals),len(E1vals)))), axis = 0),
-    np.concatenate((dsigma2dE1_vals,-np.diag(sigma_2_vals) + dsigma2dE2_vals,np.zeros((len(ESMvals),len(E2vals)))), axis = 0),
-    np.concatenate((np.zeros((len(E1vals),len(ESMvals))),dsigmadE2SM_vals,np.zeros((len(ESMvals),len(ESMvals)))), axis = 0)),
-    axis = 1)
-
-
-full_homo_matrix = full_homo_matrix*tot_int_num_dens
-
-eig_vals, eig_matrix = np.linalg.eig(full_homo_matrix)
-
-print('Eigen rank', np.linalg.matrix_rank(eig_matrix))
-
-eig_inv_matrix = np.linalg.inv(eig_matrix)
-
-#Check that the eigenvalues are correct
-for i in range(len(eig_vals)):
-    error = np.matmul(full_homo_matrix,eig_matrix[:,i]) - eig_vals[i] * eig_matrix[:,i]
-    
-    if np.abs(np.dot(error,error)) > 0.001:
-        print("EigenValue Problem")
-
-coeffs = np.array([])
-test_array = np.zeros(len(total_array))
-final_array = np.zeros(len(total_array))
-
-for i in range(len(eig_vals)):
-    coeffs = np.append(coeffs,np.dot(total_array,eig_inv_matrix[i,:]))
-    test_array += eig_matrix[:,i] * coeffs[i]
-    final_array += eig_matrix[:,i] * coeffs[i] * exp(eig_vals[i])
-
-#low Energy Vals
-dsigma2dE1_vals_low = np.transpose(dsigma2dE1(sigma20, np.transpose(np.array([E2vals])), low_E1_vals, mDM, delta)\
-    *np.transpose(np.array([dE2])))
-low_matrix = np.concatenate((np.zeros((len(low_E1_vals),len(E1vals))),
-                             dsigma2dE1_vals_low, np.zeros((len(low_E1_vals),len(ESMvals)))),axis = 1)
-
-low_matrix = low_matrix * tot_int_num_dens
-
-low_final_array = np.zeros(len(low_E1_vals))
-
-for i in range(len(eig_vals)):
-    if eig_vals[i] == 0:
-        low_final_array += np.matmul(low_matrix,eig_matrix[:,i]) * coeffs[i]
-    else:
-        low_final_array += np.matmul(low_matrix,eig_matrix[:,i]) * coeffs[i]\
-            *(1/eig_vals[i]) * (exp(eig_vals[i]) -1)
-
-
-final_array = cp * final_array
-low_final_array = cp*low_final_array
-        
-    
-        
-eig_dN1dE1 = final_array[0:len(dN1dE1)]
-eig_dN2dE2 = final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
-
-plot_E1vals = np.append(low_E1_vals,E1vals)
-plot_dN1dE1 = np.append(low_final_array,eig_dN1dE1)
-
-plt.figure("Chi 1")
-plt.plot(plot_E1vals,1/(dist**2)*plot_dN1dE1)
-plt.figure("Chi 2")
-plt.plot(E2vals,1/(dist**2)*eig_dN2dE2)
-
-print('All 0', np.all(eig_vals==0))
-    
-plt.figure("Chi 1")
-plt.xlabel('$E_{\chi_1}$ [GeV]')
-plt.ylabel("$d \Phi_{\chi_1} /d E_{\chi_1}$ [$cm^{-2} s^{-1} GeV^{-1}$]")
-plt.title('$m_{\chi}$ = '+str(mDM) +'GeV, $\delta$ ='+str(delta) +"GeV")
-plt.legend(fontsize = 5)
+fig = plt.figure()
+plt.plot(E1vals,dPhi1dE1)
 plt.xscale('log')
 plt.yscale('log')
 
-plt.figure("Chi 2")
-plt.xlabel('$E_{\chi_2}$ [GeV]')
-plt.ylabel("$d \Phi_{\chi_2} /d E_{\chi_2}$ [$cm^{-2} s^{-1} GeV^{-1}$]")
-plt.title('$m_{\chi}$ = '+str(mDM) +'GeV, $\delta$ ='+str(delta) +"GeV")
-plt.legend(fontsize = 5)
+fig = plt.figure()
+plt.plot(E2vals,dPhi2dE2)
 plt.xscale('log')
 plt.yscale('log')
-
-
-outfile = open(filename,"w")
-
-first_line = "mDM = "+str(mDM) +"GeV, delta = "+str(delta) +"GeV, gp_MZ = "\
-    +str(gp_MZ) + "GeV^{-1}, gchi_MZ = "+str(gChi_MZ)+"GeV^{-1} \n"
-    
-outfile.write(first_line)
-
-outfile.write("E [GeV], Flux [cm^{-2} s^{-1} GeV^{-1}] \n")
-outfile.write("Chi 1 \n")
-
-for i in range(len(plot_E1vals)):
-    outfile.write(str(plot_E1vals[i])+','+str(1/dist**2 * plot_dN1dE1[i]) +"\n")
-
-outfile.write("Chi 2 \n")
-for j in range(len(E2vals)):
-    outfile.write(str(E2vals[j]) + ',' + str(1/dist**2 * plot_dN1dE1[j]) + "\n")
-    
-outfile.close()
