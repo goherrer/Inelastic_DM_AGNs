@@ -133,7 +133,45 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
     
     angular_req = np.heaviside(cos_theta - cos(max_angle),1)
     
-    return (dsdE2 * angular_req)
+    #Calculate Deep Inelastic Scattering
+    #Just use up and down quarks
+    #Assume the coupling to quarks is the same as protons
+    mq = 0.002 #GeV
+    reducedmassq = mDM*mq/(mDM + mq)
+    sigma0q = sigma0SM * (reducedmassq / reducedmass)**2
+    BjxVals = np.linspace(0.1,1,100)
+    dx = BjxVals[1] - BjxVals[0]
+    
+    dsdE2DIS = np.zeros(dsdE2.shape)
+    
+    for Bjx in BjxVals:
+        
+        #print(np.size(qsq))
+        fxvals = uPDFfunc(Bjx,sqrt(qsq)) + dPDFfunc(Bjx,sqrt(qsq))
+        #print(np.size(fxvals))
+        sq = s*Bjx
+        tplusq,tminusq = tplusminus(mq,mDM,delta,sq)
+        TDMminq = (delta**2 - tminusq)/(2*mDM) * np.heaviside(sq - (mq+mDM+delta)**2,0)
+        TDMmaxq = (delta**2 - tplusq)/(2*mDM) * np.heaviside(sq - (mq+mDM+delta)**2,0)
+        
+        #There is no good reason for this choice here. I need a better threshold
+        DISThreshold2 = np.heaviside(sq - 10*mDM**2 - 10*mp**2,0)
+        DISThreshold = np.heaviside(qsq - Qmin**2, 0)
+        
+        numeratorq = mDM * ((sq - (mDM**2 + mq**2 + delta*mDM))**2 + mDM*TDM * (qsq - 2*sq)) * (1-FormFactor**2)
+    
+        denominatorq = 2 * reducedmassq**2 * Kallen(sq, mDM**2, mq**2)
+        try:
+            dsdE2DIS += sigma0q*fxvals*dx * numeratorq/denominatorq \
+                * np.heaviside(TDM - TDMminq,0)*np.heaviside(TDMmaxq - TDM,0)*DISThreshold
+        except:
+            fxvals = np.transpose(fxvals)
+            dsdE2DIS += sigma0q*fxvals*dx * numeratorq/denominatorq \
+                * np.heaviside(TDM - TDMminq,0)*np.heaviside(TDMmaxq - TDM,0)\
+                    *DISThreshold*DISThreshold2
+
+    
+    return ((dsdE2+dsdE2DIS) * angular_req)
 
 
 def dsigma1dE2(sigma10, Ei, E2, mDM, delta,max_angle = pi):
