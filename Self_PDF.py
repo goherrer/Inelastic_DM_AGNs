@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Self Calculation of pdfs
 """
