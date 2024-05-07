@@ -8,7 +8,7 @@ Here, we consider a very massive vector mediator
 import matplotlib
 from matplotlib import pyplot as plt
 import scienceplots
-plt.style.use(["science","ieee","bright"])
+#plt.style.use(["science","ieee","bright"])
 import numpy as np
 from numpy import pi as pi
 from numpy import sqrt, cos, sin, exp, log
@@ -16,6 +16,7 @@ from matplotlib import ticker, cm
 import math
 import scipy as sp
 from scipy import special as spc
+from Self_PDF import uPDFfunc, dPDFfunc, Qmin
 from numpy.random import randint
 
 
@@ -72,7 +73,7 @@ def tplusminus(mSM,mDM,delta,s):
 
     '''
     kin_limit = np.heaviside(s - (mDM+delta+mSM)**2,0)
-    pisq = 1/(4*s) * Kallen(mSM**2, mDM**2, s)
+    pisq = 1/(4*s) * Kallen(mSM**2, mDM**2, s) * kin_limit
     #print(pisq)
     pfsq = 1/(4*s) * Kallen(mSM**2, (mDM+delta)**2, s) * kin_limit
     #print(pfsq)
@@ -101,6 +102,7 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
     Output:
         dsdE2: Differential Energy Cross Section [cm^{2} GeV^{-1}]
     '''
+    mp = 0.94
     s = mSM**2 + mDM**2 + 2*mDM*Ei
     
     tplus,tminus = tplusminus(mSM,mDM,delta,s)
@@ -147,7 +149,8 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
     for Bjx in BjxVals:
         
         #print(np.size(qsq))
-        fxvals = uPDFfunc(Bjx,sqrt(qsq)) + dPDFfunc(Bjx,sqrt(qsq))
+        fxvals = (uPDFfunc(Bjx,sqrt(np.abs(qsq))) + dPDFfunc(Bjx,sqrt(np.abs(qsq))))\
+            * np.transpose([np.heaviside(qsq,0)])
         #print(np.size(fxvals))
         sq = s*Bjx
         tplusq,tminusq = tplusminus(mq,mDM,delta,sq)
@@ -161,9 +164,11 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
         numeratorq = mDM * ((sq - (mDM**2 + mq**2 + delta*mDM))**2 + mDM*TDM * (qsq - 2*sq)) * (1-FormFactor**2)
     
         denominatorq = 2 * reducedmassq**2 * Kallen(sq, mDM**2, mq**2)
+        
+        #print(np.product(np.isfinite(fxvals)))
         try:
             dsdE2DIS += sigma0q*fxvals*dx * numeratorq/denominatorq \
-                * np.heaviside(TDM - TDMminq,0)*np.heaviside(TDMmaxq - TDM,0)*DISThreshold
+                * np.heaviside(TDM - TDMminq,0)*np.heaviside(TDMmaxq - TDM,0)*DISThreshold*DISThreshold2
         except:
             fxvals = np.transpose(fxvals)
             dsdE2DIS += sigma0q*fxvals*dx * numeratorq/denominatorq \
@@ -355,7 +360,7 @@ def sigma2(sigma20, Ei, mDM, delta):
 
     return (sigma)
 
-def BlackHoleIntDensity(MBH):
+def BlackHoleIntDensity(MBH,mDM):
     '''
     Function to determine the integrated number density of dark matter
         around a black hole
@@ -372,7 +377,7 @@ def BlackHoleIntDensity(MBH):
     G = 6.67e-11  # kg^{-1} s^{-2} m^{3}
     Msun = 2e30  # kg
 
-    MBH = 1e8 * Msun  # kg
+    MBH = MBH * Msun  # kg
     Rschw = G*MBH/(c**2) * 100  # cm
     Rmin = 4*Rschw  # cm
     Rmax = 1e5*Rschw  # cm
@@ -394,14 +399,15 @@ def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals):
     ----------
     Gamma_B : Boost Factor of Blob
     alpha_p : Power Law behavior in Blob
-    cp : Luminosity normalizing constant [s^{-1} sr^{-1}]
+    cp : Luminosity normalizing constant [GeV^{-1} s^{-1} sr^{-1}]
     mu: cos(angle) of jet relative to line-of-sight
     ESMvals: Proton energy values [GeV]
 
     Returns
     -------
-    dNSMdESM: Rate of protons produced [GeV s^{-1} sr^{-1}]
+    dNSMdESM: Rate of protons produced [GeV^{-1} s^{-1} sr^{-1}]
     '''
+    mp = 0.94
     Beta_B = np.sqrt(1-1/Gamma_B**2)
     TSMvals = ESMvals - mp
     Gamma_p_vals = ESMvals/mp
@@ -410,7 +416,7 @@ def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals):
     prefactor = 1/(4*pi) * (1 + TSMvals/mp)**(-alpha_p)
     numerator = Gamma_B**(-alpha_p) * Beta_p_vals * (1 - Beta_B*Beta_p_vals*mu)**(-alpha_p)
     denominator = np.sqrt((1 - Beta_B*Beta_p_vals*mu)**2 - (1 - Beta_p_vals**2) * (1-Beta_B**2))
-    dNSMdESM = cp*prefactor * numerator/denominator #GeV^{-1} s^{-1} sr^{-1}
+    dNSMdESM = cp*prefactor * numerator/denominator #GeV ^{-1} s^{-1} sr^{-1}
     
     return(dNSMdESM)
 
@@ -442,12 +448,14 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
     '''
     mp = 0.94  # GeV
     sigmaSM0, sigma10, sigma20 = sigma0vals(gp_MZ,gChi_MZ,mp,mDM,delta)
+    print("sigmaSM0", sigmaSM0)
+    print("sigma10", sigma10)
     E1thres = (4*(mDM+delta)**2 -2*mDM**2)/(2*mDM)#GeV (E1 energy to scatter)
     Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
     
     ESMedges = np.logspace(np.log10(Epthres), 7, 200)  # GeV
     E1edges = np.logspace(np.log10(E1thres), 5, 201)  # GeV
-    E2edges = np.logspace(np.log10(mDM + delta+2), 5, 202)  # GeV
+    E2edges = np.logspace(np.log10(mDM + delta), 5, 202)  # GeV
     low_E1_edges = np.logspace(np.log10(mDM),np.log10(E1thres),40)
     ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
     E1vals = np.sqrt(E1edges[:-1]*E1edges[1:])
@@ -459,12 +467,15 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
     dE2 = E2edges[1:] - E2edges[:-1]
     dE1_low = low_E1_edges[1:] - low_E1_edges[:-1]
     
-    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals) #GeV s^{-1} sr^{-1}
+    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals) #GeV^{-1} s^{-1} sr^{-1}
+    
+    dNSMdESM = dNSMdESM/cp
+    
     dN1dE1 = np.zeros(len(E1vals)) #GeV^{-1} s^{-1} sr^{-1}
     dN2dE2 = np.zeros(len(E2vals)) #GeV^{-1} s^{-1} sr^{-1}
     total_array = np.append(np.append(dN1dE1,dN2dE2),dNSMdESM)
     
-    tot_int_num_dens = BlackHoleIntDensity(MBH)
+    tot_int_num_dens = BlackHoleIntDensity(MBH,mDM)
     
     sigma_1_vals = sigma1(sigma10, E1vals, mDM, delta) #cm^2
     sigma_2_vals = sigma2(sigma20, E2vals, mDM, delta) #cm^2
@@ -526,10 +537,10 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
                 *(1/eig_vals[i]) * (exp(eig_vals[i]) -1)
             
     eig_dN1dE1 = final_array[0:len(dN1dE1)]
-    eig_dN2dE2 = final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
+    eig_dN2dE2 = cp*final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
     
     E1vals = np.append(low_E1_vals,E1vals)
-    dN1dE1 = np.append(low_final_array,eig_dN1dE1)
+    dN1dE1 = cp*np.append(low_final_array,eig_dN1dE1)
     
     dPhi1dE1 = dN1dE1/dist**2
     dPhi2dE2 = eig_dN2dE2/dist**2
