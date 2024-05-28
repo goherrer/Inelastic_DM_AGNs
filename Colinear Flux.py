@@ -546,6 +546,71 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
     dPhi2dE2 = eig_dN2dE2/dist**2
     
     return(E1vals, E2vals, dPhi1dE1,dPhi2dE2)
+
+def SingleScatterFlux(mDM,delta,gp_MZ,gChi_MZ, 
+                 dist = 1835.4 * (3.86e24), MBH = 1e8, Gamma_B = 20, alpha_p = 2, cp = 2.7e47,
+                 cutoff = 0):
+    
+    '''
+    
+    Function to determine the flux of chi 2 at Earth assuming that
+    self-scattering is negligible
+    
+        Note that if there is no self-scattering and no decays then
+        there will be no chi 1
+    
+    Parameters
+    ----------
+    mDM : Dark matter ground state mass [GeV]
+    delta : Mass splitting [GeV]
+    gp_MZ : Proton coupling / boson mass [GeV^{-1}]
+    gChi_MZ : Dark Matter Coupling / boson mass [GeV^{-1}]
+    mu : cos(angle) of jet relative to line-of-sight. The default is 1.
+    dist: distance from black hole to Earth [cm]. Default is 1835.4 Mpc.
+    MBH : Mass of Black Hole [Solar Mass]. The default is 1e8.
+    Gamma_B :  Boost Factor of Blob. The default is 20.
+    alpha_p : Power Law behavior in Blob. The default is 2.
+    cp : Luminosity normalizing constant [s^{-1} sr^{-1}]. The default is 2.7e47.
+
+    Returns
+    -------
+    E2vals : Energies of chi_2 particles [GeV]
+    dphidE2vals : Flux of chi_2 particles [GeV^{-1} cm^{-1} s^{-1}]
+    '''
+    mp = 0.94  # GeV
+    sigmaSM0, sigma10, sigma20 = sigma0vals(gp_MZ,gChi_MZ,mp,mDM,delta)
+    Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
+    
+    ESMedges = np.logspace(np.log10(Epthres), 7, 600)  # GeV
+    E2edges = np.logspace(np.log10((mDM + delta)), 5, 602)  # GeV
+    ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
+    E2vals = np.sqrt(E2edges[:-1]*E2edges[1:])
+    
+    dESM = ESMedges[1:] - ESMedges[:-1]
+    dE2 = E2edges[1:] - E2edges[:-1]
+    
+    tot_int_num_dens = BlackHoleIntDensity(MBH,mDM) #cm^{-2}
+    
+    ESMvals = np.transpose([ESMvals])
+    dESM = np.transpose([dESM])
+    
+    TDMvals = E2vals - (mDM+delta)
+    TSMvals = ESMvals - mp
+    
+    muVals = (-delta**2 + 2*mp*(delta+TDMvals) + 2*mDM*TDMvals + 2*delta*TSMvals + 2*TSMvals*TDMvals) \
+        /(2 * sqrt(TSMvals*(2*mp+TSMvals)) * sqrt(TDMvals*(2*delta + 2*mDM + TDMvals)))
+        
+    muVals = muVals * np.heaviside(1 - muVals,1) * np.heaviside(1 + muVals,1)
+        
+    #print("muVals",muVals)
+    
+    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,muVals,ESMvals,cutoff) #GeV^{-1} s^{-1} sr^{-1}
+    
+    dsigmadTDM = dsigmadE2SM(sigmaSM0, ESMvals, E2vals, mp, mDM, delta)
+    
+    dphidE2vals = tot_int_num_dens/(dist**2) * np.sum(dESM*dNSMdESM*dsigmadTDM,axis=0)
+    
+    return(E2vals,dphidE2vals)
     
     
     
