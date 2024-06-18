@@ -106,9 +106,10 @@ for m in range(len(mDM_list)):
         TDMmin = (delta**2 - tminus)/(2*mDM)
         TDMmax = (delta**2 - tplus)/(2*mDM)
         num_TDM = 10000
-        dTDM = (TDMmax - TDMmin)/num_TDM
         
-        TDMvals = np.linspace(TDMmin,TDMmax,num_TDM)
+        TDMedges = np.logspace(np.log10(TDMmin),np.log10(TDMmax),num_TDM)
+        TDMvals = np.sqrt(TDMedges[:-1] * TDMedges[1:])
+        dTDM = TDMedges[1:] - TDMedges[:-1]
         
         Omega = (sVals - (mDM**2 + mp**2 + delta*mDM))**2 #GeV^{4}
         
