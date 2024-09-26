@@ -16,7 +16,7 @@ from matplotlib import ticker, cm
 import math
 import scipy as sp
 from scipy import special as spc
-from Self_PDF import uPDFfunc, dPDFfunc, Qmin
+#from Self_PDF import uPDFfunc, dPDFfunc, ubarPDFfunc,dbarPDFfunc, Qmin
 from numpy.random import randint
 
 
@@ -140,12 +140,14 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
     #Assume the coupling to quarks is the same as protons
     mq = 0.002 #GeV
     reducedmassq = mDM*mq/(mDM + mq)
-    sigma0q = sigma0SM * (reducedmassq / reducedmass)**2
+    sigma0q = sigma0SM  * (reducedmassq / reducedmass)**2 #*(1/3)**2
     BjxVals = np.linspace(0.1,1,100)
     dx = BjxVals[1] - BjxVals[0]
     
     dsdE2DIS = np.zeros(dsdE2.shape)
     
+    print("No DIS")
+    '''
     for Bjx in BjxVals:
         
         #print(np.size(qsq))
@@ -175,8 +177,8 @@ def dsigmadE2SM(sigma0SM, Ei, E2, mSM, mDM, delta,max_angle = pi):
                 * np.heaviside(TDM - TDMminq,0)*np.heaviside(TDMmaxq - TDM,0)\
                     *DISThreshold*DISThreshold2
 
-    
-    return ((dsdE2+dsdE2DIS) * angular_req)
+    '''
+    return ((dsdE2 + dsdE2DIS) * angular_req)
 
 
 def dsigma1dE2(sigma10, Ei, E2, mDM, delta,max_angle = pi):
@@ -257,7 +259,7 @@ def sigma1(sigma10, Ei, mDM, delta):
     return (sigma)
 
 
-def dsigma2dE2(sigma20, Ei, E2, mDM, delta,max_angle = pi):
+def dsigma2dE2(sigma20, Ei, E2, mDM, delta):
     '''
     Function for deterimining the differential cross section
         for chi_{1} chi_{2} -> chi_{1} chi_{2} scattering
@@ -278,14 +280,14 @@ def dsigma2dE2(sigma20, Ei, E2, mDM, delta,max_angle = pi):
     #Kinematic Requirements
     Eth = mDM + delta
     
-    pi = sqrt((Ei**2 - (mDM+delta)**2)*np.heaviside(Ei - Eth,0))
+    pi = sqrt((Ei**2 - (mDM+delta)**2)*np.heaviside(Ei - Eth,1))
     betaCOM = pi/(mDM + Ei)
     gammaCOM = 1/sqrt(1 - betaCOM**2)
     pCOM = -gammaCOM*betaCOM*Ei + gammaCOM*pi
     ECOM = gammaCOM*Ei - gammaCOM*betaCOM*pi
     Emin = gammaCOM*ECOM - gammaCOM*betaCOM*pCOM
     
-    kinematic_req = np.heaviside(Ei - E2,0) * np.heaviside(E2 - Emin,0)*np.heaviside(Ei-Eth,0)
+    kinematic_req = np.heaviside(Ei - E2,1) * np.heaviside(E2 - Emin,1)*np.heaviside(Ei-Eth,1)
     
     prefactor = ((delta + 2 * mDM)/(delta + mDM))**2
     term1 = 2 * Ei**2 * mDM
@@ -296,14 +298,8 @@ def dsigma2dE2(sigma20, Ei, E2, mDM, delta,max_angle = pi):
         Kallen(s, (mDM+delta)**2, mDM**2)) * kinematic_req
         
     #Information On Scattering Angle
-    
-    cos_theta_num = -delta**2 +Ei*E2 - (Ei-E2)*mDM - mDM**2 -2*delta*mDM
-    cos_theta_den_sq = (Ei**2 - (mDM+delta)**2) *(E2**2 - (mDM+delta)**2)
-    cos_theta = cos_theta_num/sqrt(np.abs(cos_theta_den_sq)) * np.heaviside(cos_theta_den_sq,0)
-    
-    angle_req = np.heaviside(cos_theta - cos(max_angle),1)
-    
-    return (dsdE2*angle_req)
+
+    return (dsdE2)
 
 
 def dsigma2dE1(sigma20, Ei, E1, mDM, delta,max_angle = pi):
@@ -356,9 +352,32 @@ def sigma2(sigma20, Ei, mDM, delta):
     term4 = 4*mDM**2 * (Ei+mDM)**2 * (2*Ei**2 - Ei*mDM +
                                       2*mDM**2) - 3 * delta**5 * (Ei-5*mDM)
 
-    sigma = sigma20 * prefactor * (term1+term2+term3+term4) * np.heaviside(Ei - (mDM + delta),0)
+    sigma = sigma20 * prefactor * (term1+term2+term3+term4) * np.heaviside(Ei - (mDM + delta),1)
 
     return (sigma)
+
+def Chi2DecRate(gSM_mZ,gChi_mZ,mDM,delta):
+    '''
+    Function for (approximately) determining the rate of chi_2 at rest 
+    decaying into chi_1 and 2 fermions at tree level
+
+    Parameters
+    ----------
+    gSM_mZ : Standard Model coupling / boson mass [GeV^{-1}]
+    gChi_mZ : Dark Matter Coupling / boson mass [GeV^{-1}]
+    mDM : Mass of dark matter ground state [GeV]
+    delta : Dark matter mass splitting [GeV]
+
+    Returns
+    -------
+    Gamma : Decay rate in s^{-1}
+    '''
+    prefactor = gSM_mZ**2 * gChi_mZ**2/(60 * pi**3) #GeV^{-4}
+    Gamma = prefactor * delta**5 #GeV
+    GeV_to_Inv_Sec = 1.52e24
+    
+    return(Gamma*GeV_to_Inv_Sec)
+    
 
 def BlackHoleIntDensity(MBH,mDM):
     '''
@@ -371,7 +390,7 @@ def BlackHoleIntDensity(MBH,mDM):
 
     Returns
     -------
-    tot_int_num_dens : column density of dark matter particles
+    tot_int_num_dens : column density of dark matter particles [cm^{-2}]
     '''
     c = 3e8  # m s^{-1}
     G = 6.67e-11  # kg^{-1} s^{-2} m^{3}
@@ -391,7 +410,7 @@ def BlackHoleIntDensity(MBH,mDM):
     
     return(tot_int_num_dens)
     
-def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals):
+def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals,cutoff = 0):
     '''
     Function to calculate Rate of protons
 
@@ -416,12 +435,13 @@ def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals):
     prefactor = 1/(4*pi) * (1 + TSMvals/mp)**(-alpha_p)
     numerator = Gamma_B**(-alpha_p) * Beta_p_vals * (1 - Beta_B*Beta_p_vals*mu)**(-alpha_p)
     denominator = np.sqrt((1 - Beta_B*Beta_p_vals*mu)**2 - (1 - Beta_p_vals**2) * (1-Beta_B**2))
-    dNSMdESM = cp*prefactor * numerator/denominator #GeV ^{-1} s^{-1} sr^{-1}
+    dNSMdESM = cp*prefactor * numerator/denominator * np.heaviside(ESMvals-cutoff,0) #GeV ^{-1} s^{-1} sr^{-1}
     
     return(dNSMdESM)
 
 def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ, 
-                 mu = 1,dist = 1835.4 * (3.86e24), MBH = 1e8, Gamma_B = 20, alpha_p = 2, cp = 2.7e47):
+                 mu = 1,dist = 1835.4 * (3.86e24), MBH = 1e8, Gamma_B = 20, alpha_p = 2, cp = 2.7e47,
+                 cutoff = 0):
     '''
     
     Function to determine the fluxes of chi 1 and chi 2 at Earth
@@ -453,10 +473,10 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
     E1thres = (4*(mDM+delta)**2 -2*mDM**2)/(2*mDM)#GeV (E1 energy to scatter)
     Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
     
-    ESMedges = np.logspace(np.log10(Epthres), 7, 200)  # GeV
-    E1edges = np.logspace(np.log10(E1thres), 5, 201)  # GeV
-    E2edges = np.logspace(np.log10(mDM + delta), 5, 202)  # GeV
-    low_E1_edges = np.logspace(np.log10(mDM),np.log10(E1thres),40)
+    ESMedges = np.logspace(np.log10(Epthres), 7, 600)  # GeV
+    E1edges = np.logspace(np.log10(E1thres), 5, 601)  # GeV
+    E2edges = np.logspace(np.log10((mDM + delta)*1.1), 5, 602)  # GeV
+    low_E1_edges = np.logspace(np.log10(mDM),np.log10(E1thres),120)
     ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
     E1vals = np.sqrt(E1edges[:-1]*E1edges[1:])
     E2vals = np.sqrt(E2edges[:-1]*E2edges[1:])
@@ -467,7 +487,7 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
     dE2 = E2edges[1:] - E2edges[:-1]
     dE1_low = low_E1_edges[1:] - low_E1_edges[:-1]
     
-    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals) #GeV^{-1} s^{-1} sr^{-1}
+    dNSMdESM = AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals,cutoff) #GeV^{-1} s^{-1} sr^{-1}
     
     dNSMdESM = dNSMdESM/cp
     
@@ -519,11 +539,12 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
         test_array += eig_matrix[:,i] * coeffs[i]
         final_array += eig_matrix[:,i] * coeffs[i] * exp(eig_vals[i])
 
-    #low Energy Vals
+    #low Energy Vals for chi 1
     dsigma2dE1_vals_low = np.transpose(dsigma2dE1(sigma20, np.transpose(np.array([E2vals])), low_E1_vals, mDM, delta)\
         *np.transpose(np.array([dE2])))
     low_matrix = np.concatenate((np.zeros((len(low_E1_vals),len(E1vals))),
                                  dsigma2dE1_vals_low, np.zeros((len(low_E1_vals),len(ESMvals)))),axis = 1)
+    
 
     low_matrix = low_matrix * tot_int_num_dens
 
@@ -535,18 +556,41 @@ def Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
         else:
             low_final_array += np.matmul(low_matrix,eig_matrix[:,i]) * coeffs[i]\
                 *(1/eig_vals[i]) * (exp(eig_vals[i]) -1)
+    
+    ##########################################################
+    '''
+    #low Energy Val for chi 2, find the flux near the rest mass
+    dsigma2dE2_vals_low = np.transpose(dsigma2dE2(sigma20, np.transpose(np.array([E2vals])), np.array([mDM+delta]), mDM, delta)\
+        *np.transpose(np.array([dE2])))
+    low_matrix2 = np.concatenate((np.zeros((1,len(E1vals))),
+                                 dsigma2dE2_vals_low, np.zeros((1,len(ESMvals)))),axis = 1)
+    low_matrix2 = low_matrix2*tot_int_num_dens
+    
+    low_val = 0 #GeV^{-1}
+    for i in range(len(eig_vals)):
+        if eig_vals[i] == 0:
+            low_val += np.matmul(low_matrix2,eig_matrix[:,i]) * coeffs[i]
+        else:
+            low_val += np.matmul(low_matrix2,eig_matrix[:,i]) * coeffs[i]\
+                *(1/eig_vals[i]) * (exp(eig_vals[i]) -1)
+    '''    
+    ############################################################
             
     eig_dN1dE1 = final_array[0:len(dN1dE1)]
-    eig_dN2dE2 = cp*final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
+    eig_dN2dE2 = final_array[len(dN1dE1):len(dN1dE1)+len(dN2dE2)]
     
     E1vals = np.append(low_E1_vals,E1vals)
     dN1dE1 = cp*np.append(low_final_array,eig_dN1dE1)
     
+    #E2vals = np.append(mDM+delta,E2vals)
+    #dN2dE2 = cp* np.append(low_val,eig_dN2dE2)
+    dN2dE2 = cp*eig_dN2dE2
+    
     dPhi1dE1 = dN1dE1/dist**2
-    dPhi2dE2 = eig_dN2dE2/dist**2
+    dPhi2dE2 = dN2dE2/dist**2
     
     return(E1vals, E2vals, dPhi1dE1,dPhi2dE2)
-
+    
 def SingleScatterFlux(mDM,delta,gp_MZ,gChi_MZ, 
                  dist = 1835.4 * (3.86e24), MBH = 1e8, Gamma_B = 20, alpha_p = 2, cp = 2.7e47,
                  cutoff = 0):
@@ -575,14 +619,14 @@ def SingleScatterFlux(mDM,delta,gp_MZ,gChi_MZ,
     Returns
     -------
     E2vals : Energies of chi_2 particles [GeV]
-    dphidE2vals : Flux of chi_2 particles [GeV^{-1} cm^{-1} s^{-1}]
+    dphidE2vals : Flux of chi_2 particles [GeV^{-1} cm^{-2} s^{-1}]
     '''
     mp = 0.94  # GeV
     sigmaSM0, sigma10, sigma20 = sigma0vals(gp_MZ,gChi_MZ,mp,mDM,delta)
     Epthres = (delta**2 + 2*mp*mDM + 2*mDM*delta + 2*mp*delta)/(2*mDM)
     
     ESMedges = np.logspace(np.log10(Epthres), 7, 600)  # GeV
-    E2edges = np.logspace(np.log10((mDM + delta)), 5, 602)  # GeV
+    E2edges = np.logspace(np.log10((mDM + delta)), 6, 702)  # GeV
     ESMvals = np.sqrt(ESMedges[:-1]*ESMedges[1:])
     E2vals = np.sqrt(E2edges[:-1]*E2edges[1:])
     
@@ -612,26 +656,200 @@ def SingleScatterFlux(mDM,delta,gp_MZ,gChi_MZ,
     
     return(E2vals,dphidE2vals)
     
-    
-    
-   
-    
+     
 
 #MODEL Parameters
-mDM = 1  # GeV
-delta = 1  # GeV
+
+'''
+#Check Total flux of Chi 2
+
+mDM = 1e-2  # GeV
+#deltaVals = np.array([1])#np.logspace(-1,1,3)  # GeV
+delta = mDM*0.1
 mp = 0.94  # GeV
-gp_MZ = 1e-3 #GeV^{-1}
-gChi_MZ = 1 #GeV^{-1}
+#gp_MZ = 1e-1 #GeV^{-1}
+#gChi_MZ = 1e-1 #GeV^{-1}
+prod = 1e-3
 
-E1vals, E2vals, dPhi1dE1, dPhi2dE2 = Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ)
+fig1 = plt.figure("Chi1")
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel("$d \Phi_{1}/dE_{\chi_{1}}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
+plt.xlabel("$E_{\chi_{1}}$ [GeV]")
+#plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_{SM}/M_{Z'}$ ="+str(gp_MZ) + "$\mathrm{GeV^{-1}}$")
+#plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(deltaVals[0]) + "GeV ; $g_{SM}/M_{Z'}$ ="+str(gp_MZ) 
+#          + "$\mathrm{GeV^{-1}}$ ; $g_{\chi}/M_{Z'}$ ="+str(gp_MZ) + "$\mathrm{GeV^{-1}}$")
+plt.title("NGC 1068 $m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_p g_{\chi}/M_{Z'}^2$ ="+str(prod)+"$GeV^{-2}$")
+
+
+fig2 = plt.figure("Chi2")
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel("$d \Phi_{2}/dE_{\chi_{2}}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
+plt.xlabel("$E_{\chi_{2}}$ [GeV]")
+#plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(deltaVals[0]) + "GeV ; $g_{SM}/M_{Z'}$ ="+str(gp_MZ) 
+#          + "$\mathrm{GeV^{-1}}$ ; $g_{\chi}/M_{Z'}$ ="+str(gp_MZ) + "$\mathrm{GeV^{-1}}$")
+#plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_{SM}/M_{Z'}$ ="+str(gp_MZ) + "$\mathrm{GeV^{-1}}$")
+plt.title("NGC 1068 $m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_p g_{\chi}/M_{Z'}^2$ ="+str(prod)+"$GeV^{-2}$")
+
+
+gChiVals = [1]#np.logspace(-3,0,2)
+tot_chi1 = np.array([])
+tot_chi2 = np.array([])
+for gChi_MZ in gChiVals:
+    gp_MZ = prod / gChi_MZ
+    E1vals,E2vals, dPhi1dE1,dPhi2dE2 = Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,
+                                                    dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46,cutoff = 1e5)
+    
+    plt.figure("Chi1")
+    plt.plot(E1vals,dPhi1dE1,label = "$g_{p}/M_{Z^{\prime}}$ = 1e"+str(round(np.log10(gp_MZ),2)) + "$GeV^{-1}$")
+    plt.legend(fontsize = 10)
+    
+    plt.figure("Chi2")
+    plt.plot(E2vals,dPhi2dE2,label = "$g_{p}/M_{Z^{\prime}}$ = 1e"+str(round(np.log10(gp_MZ),2)) + "$GeV^{-1}$")
+    plt.legend(fontsize = 10)
+    
+    
+    dE1vals = E1vals[1:]- E1vals[:-1]
+    dE2vals = E2vals[1:] - E2vals[:-1]
+    
+    #E2step = E2vals[1]/E2vals[0]
+    #E2edges = np.append(E2vals/(E2step/2), E2vals[-1] * E2step/2)
+    #dE2vals = E2edges[1:]-E2edges[:-1]
+    dE1vals = np.append(dE1vals,dE1vals[-1])
+    dE2vals = np.append(dE2vals,dE2vals[-1])
+    
+    #tot_chi1 = np.append(tot_chi1,np.sum(dPhi1dE1*dE1vals))
+    tot_chi2 = np.append(tot_chi2,np.sum(dPhi2dE2*dE2vals))
+    #plt.legend()
+
+
+gp_MZ = 1
+gChi_MZ = prod
+   
+E2valsS,dPhi2dE2S = SingleScatterFlux(mDM,delta,gp_MZ,gChi_MZ,
+                                    dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46,cutoff = 1e5)
+plt.figure("Chi2")
+plt.plot(E2valsS,dPhi2dE2S,label = "Single Scatter")
+plt.legend()
+#Check the Decay Length vs Mean-free-path for Chi
+'''
+
+
+
+'''
+mDM = 0.1 #GeV
+mp = 1
+gSM_mZ = 1e-3 #GeV^{-1}
+gDM_mZ = 1 #GeV^{-1}
+deltaVals = np.logspace(-3,-1,3) #GeV
+E2Vals = np.logspace(2,5,300) #GeV
+c = 3e10 #cm s^{-1}
 
 fig = plt.figure()
-plt.plot(E1vals,dPhi1dE1)
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel("$E_{\chi 2}$ [GeV]")
+plt.ylabel("$n [cm^{-3}]$")
+plt.title("$\\lambda_{mfp} = \\lambda_{dec}$, $m_{DM}$ ="+str(mDM) 
+          + "GeV, $g_{\chi}/m_{Z'}$ ="+str(gDM_mZ) + "$GeV^{-1}$ , $g_{SM}/m_{Z'}$ = "
+          +str(gSM_mZ) + "$GeV^{-1}$")
+
+for delta in deltaVals:
+    sigmaSM0,sigma10,sigma20 =sigma0vals(gSM_mZ,gDM_mZ,mp,mDM,delta)
+    sigma2vals = sigma2(sigma20, E2Vals, mDM, delta) #cm^2
+    GammaDec = Chi2DecRate(gSM_mZ,gDM_mZ,mDM,delta) #s^{-1}
+    Boost = E2Vals/(mDM + delta)
+    beta = sqrt(1 - 1/Boost**2)
+    n = GammaDec /(c * Boost * beta * sigma2vals) #cm^{-3}
+    plt.plot(E2Vals,n,label = "$\delta$ = "+str(delta) + "GeV")
+    
+plt.legend()
+'''
+
+
+'''    
+fig = plt.figure()
+#plt.plot(gChiVals,tot_chi1)
+plt.plot(gChiVals,tot_chi2)
+plt.yscale('log')
+'''
+
+#Check On vs Off axis fluxes
+'''
+muedges = 1 - np.logspace(-8,0,200)
+muvals = np.sqrt(muedges[1:]*muedges[:-1])
+dmu = -(muedges[1:] -muedges[:-1])
+
+index = 0
+for muval in muvals:
+    print(muval)
+    
+
+    E1vals, E2vals, dPhi1dE1, dPhi2dE2 = Chi1Chi2Flux(mDM,delta,gp_MZ,gChi_MZ,mu = muval)
+                                              #dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+    
+    if index ==0:
+        fig = plt.figure("Chi1")
+        plt.plot(E1vals,dPhi1dE1, label = "on axis")
+        plt.xscale('log')
+        plt.yscale('log')
+        
+        fig = plt.figure("Chi2")
+        plt.plot(E2vals,dPhi2dE2, label = "on axis")
+        plt.xscale('log')
+        plt.yscale('log')
+        
+        avgPhi1 = dPhi1dE1 * dmu[index]
+        avgPhi2 = dPhi2dE2 * dmu[index]
+        
+    else:
+        avgPhi1 += dPhi1dE1 * dmu[index]
+        avgPhi2 += dPhi2dE2 * dmu[index]
+    
+    index += 1
+
+fig = plt.figure("Chi1")
+plt.plot(E1vals,avgPhi1, label = "avg")
 plt.xscale('log')
 plt.yscale('log')
 
-fig = plt.figure()
-plt.plot(E2vals,dPhi2dE2)
+fig = plt.figure("Chi2")
+plt.plot(E2vals,avgPhi2, label = "avg")
 plt.xscale('log')
 plt.yscale('log')
+
+plt.legend()
+'''
+
+#Check Total Luminosity
+'''
+mp = 0.94
+
+Epedges = np.logspace(0,13,2500)
+
+
+muedges = 1 - np.logspace(-8,0,1500)
+
+Epvals = sqrt(Epedges[1:]*Epedges[:-1])
+muvals = np.sqrt(muedges[1:]*muedges[:-1])
+dmu = -(muedges[1:] -muedges[:-1])
+
+muvals = np.transpose([muvals])
+dmu = np.transpose([dmu])
+
+gamma_vals = Epvals/mp
+beta_vals = sqrt(1 - 1/gamma_vals**2)
+
+dEp = Epedges[1:] - Epedges[:-1] #GeV
+
+Gamma_B = 20
+Beta_B = sqrt(1 - (1/Gamma_B**2))
+
+dNSMdESM = AGNProtonRate(Gamma_B,2,2.54e47,muvals,Epvals) #GeV^{-1} s^{-1}
+
+gamma_primes = (1 - Beta_B*beta_vals*muvals)*gamma_vals*Gamma_B
+gamma_req = np.heaviside(gamma_primes - 1,0)*np.heaviside(5.5e7 - gamma_primes,0)
+
+print("Total Luminosity", np.sum(2*pi*dNSMdESM*Epvals*dEp*dmu*gamma_req)*0.0015, "erg s^{-1}")
+'''
