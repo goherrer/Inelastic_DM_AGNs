@@ -14,7 +14,7 @@ from matplotlib import ticker, cm
 import math
 import scipy as sp
 from scipy import special as spc
-from Self_PDF import uPDFfunc, dPDFfunc, ubarPDFfunc,dbarPDFfunc, Qmin
+#from Self_PDF import uPDFfunc, dPDFfunc, ubarPDFfunc,dbarPDFfunc, Qmin
 from numpy.random import randint
 import numpy.random as rand
 import Colinear_Flux as CF
@@ -673,11 +673,11 @@ def SingleScatterFluxFiniteMassWDec3Body(mDM,delta,gp,gChi,mZ,mf,
 
 #Make Plots of the Fluxes
 '''
-mDM = 1e-4  # GeV
-delta = 0.4*mDM
+mDM = 0.1  # GeV
+delta = 0.2
 prod = 1e-3
 
-mZ = 10*mDM #GeV
+mZ = mDM #GeV
 mp = 0.94  # GeV
 me = 511e-6
 gp = 1
@@ -692,8 +692,8 @@ plt.ylabel("$d \Phi_{2}/dE_{\chi_{2}}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
 plt.xlabel("$E_{\chi_{2}}$ [GeV]")
 plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_p g_{\chi}/M_{Z'}^2$ ="+str(prod)+"$GeV^{-2}$ ; Single Scatter")
 
-E2valsS,dPhi2dE2S = SingleScatterFluxFiniteMassNoDec(mDM,delta,gp,gChi,mZ,
-                                    dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+E2valsS,dPhi2dE2S = SingleScatterFluxFiniteMassNoDec(mDM,delta,gp,gChi,mZ)
+                                    #dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
 
 
 if delta > mZ:
@@ -725,27 +725,32 @@ plt.ylabel("$d \Phi_{1}/dE_{\chi_{1}}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
 plt.xlabel("$E_{\chi_{1}}$ [GeV]")
 plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $g_p g_{\chi}/M_{Z'}^2$ ="+str(prod)+"$GeV^{-2}$ ; Single Scatter")
 
-E1valsS,dPhi1dE1S = SingleScatterFluxFiniteMassWDec(mDM,delta,gp,gChi,mZ,
-                                                    dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
-#E1valsS,dPhi1dE1S = SingleScatterFluxFiniteMassWDec3Body(mDM,delta,gp,gChi,mZ,me)#,
-                                    #dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+
+if delta > mZ or delta < 2* me:
+    E1valsS,dPhi1dE1S = SingleScatterFluxFiniteMassWDec(mDM,delta,gp,gChi,mZ)
+                                                        #dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+elif delta < mZ and delta > 2*me:
+    E1valsS,dPhi1dE1S = SingleScatterFluxFiniteMassWDec3Body(mDM,delta,gp,gChi,mZ,me)
+                                        #dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
 plt.figure("Chi1")
 plt.plot(E1valsS,dPhi1dE1S,label = "TXS, $m_{Z'}$ ="+str(round(mZ,3)) + " GeV")
-plt.plot(E1CalcVals,Phi1CalcVals,label = "Calc")
+#plt.plot(E1CalcVals,Phi1CalcVals,label = "Calc")
 plt.legend()
 
 fig3 = plt.figure("Combined")
 
 plt.xscale('log')
 plt.yscale('log')
-plt.ylabel("$d \Phi_{1}/dE_{\chi_{1}}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
+plt.ylabel("$d \Phi/dE_{\chi}$ [$\mathrm{cm^{-2} s^{-1} GeV^{-1}}$]")
 plt.xlabel("$E_{\chi_{1}}$ [GeV]")
-plt.title("$m_{\chi}$ = "+str(mDM) + "GeV ; $\delta$ ="+str(delta) + "GeV ; $m_{Z^{\prime}}$ = "+str(mZ)
-          +" GeV ; $g_p g_{\chi}$ ="+str(gp*gChi))
+plt.title("TXS 056+0506 ; $m_{\chi}$ = "+str(round(mDM,2)) + "GeV ; $m_{Z^{\prime}}$ = "+str(round(mZ,3))
+          +" GeV ; $g_p g_{\chi}$ =1e"+str(round(np.log10(gp*gChi),3)))
 
-plt.plot(E1valsS,dPhi1dE1S,label = "TXS w/ decays( $\chi_{1}$)")
-plt.plot(E2valsS,dPhi2dE2S,label = "TXS w/out decays ($\chi_{2}$)")
-plt.legend()
+plt.plot(E1valsS,dPhi1dE1S,"--",color = "r",label = "$\delta$ ="+str(round(delta,3)) + "GeV ; $\chi_{1}$")
+plt.plot(E2valsS,dPhi2dE2S,"--",color = "b",label = "$\delta$ ="+str(round(delta,3)) + "GeV ; $\chi_{2}$")
+plt.legend(fontsize = 6,loc = "lower left")
+
+plt.xlim([1e-1,1e3])
 '''
 
 #Get Exclusions for scattering and decays
@@ -762,19 +767,19 @@ des_Events_eHigh_NoAng = 6
 des_Events_eMid_NoAng = 51
 des_Events_eLow_NoAng = 150
 
-mZ = 500 #GeV
+#mZ = 500 #GeV
 
 guess_prod = 1 #Guess at g_p * g_chi
-mDMlist = np.logspace(-5,1,7)
-deltaVals = np.logspace(-2,1,4)#np.logspace(-4,0,3)
-#delta_ratio = 0.8
-#mZ_ratio = 3
+mDMlist = np.logspace(-3,0,12)
+deltaVals = np.array([1])#np.logspace(-2,1,4)#np.logspace(-4,0,3)
+delta_ratio = 0.4
+mZ_ratio = 10
 
 colors = ["r","g","b"]
 fig = plt.figure("SK Exclusions Sing Scat Elec")
-sources = ["TXS","NGC"]
+sources = ['TXS']#["TXS","NGC"]
 
-file = open("SK_Electron_Scattering_mZ_"+str(mZ)+"GeV_NoDIS.csv","w")
+#file = open("SK_Electron_Scattering_mZ_"+str(mZ)+"GeV_NoDIS.csv","w")
 
 
 
@@ -791,19 +796,21 @@ third_string = third_string *2
 second_string += "\n"
 third_string += "\n"
 
-file.write(first_string)
-file.write(second_string)
-file.write(third_string)
+#file.write(first_string)
+#file.write(second_string)
+#file.write(third_string)
 
 CouplingExclude1 = np.array([])
 CouplingExclude2 = np.array([])
 
 for mDM in mDMlist:
+    mZ = mDM*mZ_ratio
     
     
     for source in sources:
         
         for delta in deltaVals:
+            delta = mDM*delta_ratio
     
         
             #color = colors[np.where(delta == deltaVals)[0][0]]
@@ -989,21 +996,53 @@ for mDM in mDMlist:
             print("coup 1", coup1, "coup 2",coup2)
             CouplingExclude1 = np.append(CouplingExclude1,coup1)
             
-            file.write(str(mDM) +","+ str(coup1)+"," + str(coup2) +",")
+            #file.write(str(mDM) +","+ str(coup1)+"," + str(coup2) +",")
             
         
         
         
-    file.write('\n')
+    #file.write('\n')
     
+#file.close()
+
+
+
+file = open("yVals-Exisiting-Bounds.csv","r")
+mDMexisting = np.array([])
+yExisting = np.array([])
+line_index = 0
+for line in file:
+    line_index += 1
+    if line_index >1:
+        line = line.split(',')
+        mDMexisting = np.append(mDMexisting,float(line[0]))
+        yExisting = np.append(yExisting,float(line[1]))
 file.close()
-'''
+
+file = open("y-vals-thermal-relic.csv","r")
+mDMthermal = np.array([])
+ythermal = np.array([])
+line_index = 0
+for line in file:
+    line_index += 1
+    if line_index > 1:
+        line = line.split(',')
+        mDMthermal = np.append(mDMthermal,float(line[0]))
+        ythermal = np.append(ythermal,float(line[1]))
+file.close()
+
+
+
 fig = plt.figure("yVals")
+
+#plt.fill_between(mDMexisting,yExisting,100,label = "Existing Bounds",color = "grey",alpha = 0.5)
+#plt.plot(mDMthermal,ythermal,label = "Thermal inelastic dark matter",color = "purple")
+
 yvals1 = CouplingExclude1**2/(4*pi*0.3**2) * (1/mZ_ratio)**4
 yvals2 = CouplingExclude2**2/(4*pi*0.3**2) * (1/mZ_ratio)**4
 
-plt.plot(mDMlist,yvals1, label = "Chi1")
-plt.plot(mDMlist,yvals2, label = "Chi2")
+plt.plot(mDMlist,yvals1, label = "$\chi_{1}$ "+source)
+#plt.plot(mDMlist,yvals2, label = "$\chi_{2}$ (Ignoring Decays)")
 plt.xscale('log')
 plt.yscale('log')
 
@@ -1011,8 +1050,332 @@ plt.xlabel('$m_{\chi}$[GeV]')
 plt.ylabel("y = $\epsilon^2 \\alpha_{D} (m_{\chi}/m_{Z'})^4$")
 plt.legend()
 
-plt.title('$\delta$ = '+str(round(delta_ratio,1))+"$m_{DM}$ $m_{Z'}$ ="+str(mZ_ratio)+"$m_{DM}$")
+plt.title('$\delta$ = '+str(round(delta_ratio,1))+"$m_{DM}$ ; $m_{Z'}$ ="+str(mZ_ratio)+"$m_{DM}$")
+
 '''
+file = open("EpsilonVals-Existing-Bounds.csv","r")
+mDMexisting = np.array([])
+epsilonExisting = np.array([])
+line_index = 0
+for line in file:
+    line_index += 1
+    if line_index > 1:
+        line = line.split(',')
+        mDMexisting = np.append(mDMexisting,float(line[0]))
+        epsilonExisting = np.append(epsilonExisting,float(line[1]))
+file.close()
+
+file = open("eps-vals-thermal-relic.csv","r")
+mDMthermal1 = np.array([])
+epsthermal1 = np.array([])
+mDMthermal2 = np.array([])
+epsthermal2 = np.array([])
+line_index = 0
+
+first_bound = True
+for line in file:
+    line_index += 1
+    if line_index > 1:
+        line = line.split(',')
+        if line_index == 2:
+            mDMthermal1 = np.append(mDMthermal1,float(line[0]))
+            epsthermal1 = np.append(epsthermal1,float(line[1]))
+        else:
+            if first_bound:
+                if float(line[0]) < mDMthermal1[-1]:
+                    first_bound = False
+            
+            if first_bound:
+                mDMthermal1 = np.append(mDMthermal1,float(line[0]))
+                epsthermal1 = np.append(epsthermal1,float(line[1]))
+            else:
+                mDMthermal2 = np.append(mDMthermal2,float(line[0]))
+                epsthermal2 = np.append(epsthermal2,float(line[1]))
+file.close()
+
+epsthermal2interp = np.interp(mDMthermal1,mDMthermal2,epsthermal2)            
+
+fig = plt.figure("epsVals")
+plt.fill_between(mDMexisting,epsilonExisting,1000,label = "Exisiting Bounds", color ="grey", alpha = 0.5)
+#plt.plot(mDMthermal1,epsthermal1,label = "Thermal Relic")
+#plt.plot(mDMthermal2, epsthermal2, label = "Thermal Relic")
+plt.fill_between(mDMthermal1,epsthermal1,epsthermal2interp,label = "Thermal Relic", color = "purple", alpha = 0.5)
+
+
+
+epsVals = CouplingExclude1/(0.3 * sqrt(4*pi*0.5))
+plt.plot(mDMlist,epsVals, label = "$\chi_{1}$ "+source)
+plt.xscale('log')
+plt.yscale('log')
+
+plt.xlabel('$m_{\chi}$[GeV]')
+plt.ylabel("$\epsilon$")
+plt.legend()
+
+plt.title('$\delta$ = '+str(round(delta_ratio,1))+"$m_{DM}$ ; $m_{Z'}$ ="+str(mZ_ratio)
+          +"$m_{DM}$ ; $\\alpha_{D}$ = 0.5")
+
+'''
+
+
+'''
+#Make Contour Plot for Exclusions
+Inv_GeV_to_cm = 1.98e-14
+mp = 0.94
+me = 511e-6
+des_Events = 1000
+des_Events_eHigh = 3
+des_Events_eMid = 4.5
+des_Events_eLow = 20
+
+des_Events_eHigh_NoAng = 6
+des_Events_eMid_NoAng = 51
+des_Events_eLow_NoAng = 150
+
+#mZ = 500 #GeV
+
+guess_prod = 1 #Guess at g_p * g_chi
+mDMlist = np.logspace(-6,1,15)
+deltaVals = np.logspace(-6,1,14)#np.logspace(-4,0,3)
+
+mZ = 1e-2 #GeV
+
+colors = ["r","g","b"]
+fig = plt.figure("SK Exclusions Sing Scat Elec")
+source = "TXS"#["TXS","NGC"]
+
+#file = open("SK_Electron_Scattering_mZ_"+str(mZ)+"GeV_NoDIS.csv","w")
+
+
+
+first_string = "TXS, " + (3*len(deltaVals)-1) * ", " + "NGC, " + 2*(len(deltaVals)-1) * ", " +"\n"
+second_string = ""
+third_string = ""
+for delta in deltaVals:
+    second_string += "delta ="+str(delta)+" GeV, , ,"
+    third_string += "m_DM [GeV], g_{SM} g_{Chi} Chi 1 Scattering, g_{SM} g_{Chi} Chi 2 Scattering,"
+    
+second_string = second_string*2
+third_string = third_string *2
+    
+second_string += "\n"
+third_string += "\n"
+
+#file.write(first_string)
+#file.write(second_string)
+#file.write(third_string)
+
+CouplingExclude1 = np.zeros((len(mDMlist),len(deltaVals)))
+CouplingExclude2 = np.zeros((len(mDMlist),len(deltaVals)))
+
+
+mDM_index = -1
+
+for mDM in mDMlist:
+    mDM_index += 1
+    delta_index = -1
+    
+    
+    for delta in deltaVals:
+        delta_index += 1
+
+        print('mDM', mDM)
+        print('delta',delta)
+        mu_chi_p = (mDM*mp)/(mDM + mp)
+        gchi = guess_prod
+        gSM = 1
+        
+        #Get Flux properties    
+        if source == "TXS":
+            E2vals,dPhi2dE2 = SingleScatterFluxFiniteMassNoDec(mDM,delta,gSM,gchi,mZ)
+            if delta > mZ:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec(mDM,delta,gSM,gchi,mZ)
+            elif delta < mZ and delta > 2*me:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec3Body(mDM,delta,gSM,gchi,mZ,me)
+                E1vals = E1vals[:,0]
+            elif mZ > delta and delta < 2*me:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec(mDM,delta,gSM,gchi,mZ)
+            else:
+                print("No Decays")
+                E1vals = np.logspace(np.log10(mDM)+0.5,5,100)
+                dPhi1dE1 = np.zeros(len(E1vals))
+                                                      
+        if source == "NGC":
+            E2vals,dPhi2dE2 = SingleScatterFluxFiniteMassNoDec(mDM,delta,gSM,gchi,mZ,
+                                                       dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+                                                       #cutoff = 1e5)
+            if delta > mZ:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec(mDM,delta,gSM,gchi,mZ,
+                                                       dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+                                                       #cutoff = 1e5)
+            elif delta < mZ and delta>2*me:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec3Body(mDM,delta,gSM,gchi,mZ,me,
+                                                       dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+                                                        #cutoff = 1e5
+                E1vals = E1vals[:,0]
+            
+            elif delta < mZ and delta < 2*me:
+                E1vals,dPhi1dE1 = SingleScatterFluxFiniteMassWDec(mDM,delta,gSM,gchi,mZ,
+                                                       dist = 14 * (3.86e24), MBH = 1e7, Gamma_B = 1, alpha_p = 2, cp = 1e46)
+            else:
+                print("No Decays")
+                E1vals = np.logspace(np.log10(mDM)+0.5,5,100)
+                dPhi1dE1 = np.zeros(len(E1vals))
+        
+        
+        dE2 = E2vals[1:]-E2vals[:-1]
+        dE2 = np.append(dE2,dE2[-1])
+        
+        
+        
+        num_protons = 22.5*1e9 * 6e23/2
+        
+        
+        #Get Detector Scattering Properties for Electrons
+        TSMvalsHigh = np.transpose([np.linspace(20,1000,10000)]) #GeV
+        TSMvalsMid = np.transpose([np.linspace(1.33,20,10000)]) #GeV
+        TSMvalsLow = np.transpose([np.linspace(0.1,1.33,10000)]) #GeV
+        
+        ThetaMaxHigh = 5 * pi/180
+        ThetaMaxMid =  7* pi/180
+        ThetaMaxLow = 24 * pi/180
+        
+        dsigma2dTSMHigh = dsigmaChi2dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E2vals,TSMvalsHigh,mSM = 9.1e-4,Lambda = 1e10)
+        dsigma2dTSMMid = dsigmaChi2dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E2vals,TSMvalsMid,mSM = 9.1e-4,Lambda = 1e10)
+        dsigma2dTSMLow = dsigmaChi2dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E2vals,TSMvalsLow,mSM = 9.1e-4,Lambda = 1e10)
+        
+        #Note, we ignore the mass of the electron for angular calculations
+        
+        cosTheta2High = (2*TSMvalsHigh*(E2vals) - 2*mDM*delta - delta**2)\
+            /(2*TSMvalsHigh * sqrt(E2vals**2 - (mDM+delta)**2))
+        cosTheta2Mid = (2*TSMvalsMid*(E2vals) - 2*mDM*delta - delta**2)\
+            /(2*TSMvalsMid * sqrt(E2vals**2 - (mDM+delta)**2))
+        cosTheta2Low = (2*TSMvalsLow*(E2vals) - 2*mDM*delta - delta**2)\
+            /(2*TSMvalsLow * sqrt(E2vals**2 - (mDM+delta)**2))
+        
+        AngleReq2High = np.heaviside(cosTheta2High - cos(ThetaMaxHigh),1)
+        AngleReq2Mid = np.heaviside(cosTheta2Mid - cos(ThetaMaxMid),1)
+        AngleReq2Low = np.heaviside(cosTheta2Low - cos(ThetaMaxLow),1)
+        
+        dratedTSMHigh2 = num_protons * np.sum(dPhi2dE2*dsigma2dTSMHigh*dE2
+                                            *AngleReq2High, axis = 1)
+        dratedTSMMid2 = num_protons * np.sum(dPhi2dE2*dsigma2dTSMMid*dE2
+                                            *AngleReq2Mid, axis = 1)
+        dratedTSMLow2 = num_protons * np.sum(dPhi2dE2*dsigma2dTSMLow*dE2
+                                            *AngleReq2Low, axis = 1)
+        
+        dratedTSMHigh2NoAng = num_protons * np.sum(dPhi2dE2*dsigma2dTSMHigh*dE2, axis = 1)
+        dratedTSMMid2NoAng = num_protons * np.sum(dPhi2dE2*dsigma2dTSMMid*dE2, axis = 1)
+        dratedTSMLow2NoAng = num_protons * np.sum(dPhi2dE2*dsigma2dTSMLow*dE2, axis = 1)
+
+        dTSMHigh = TSMvalsHigh[1] - TSMvalsHigh[0]
+        dTSMMid = TSMvalsMid[1] - TSMvalsMid[0]
+        dTSMLow = TSMvalsLow[1] - TSMvalsLow[0]
+
+        
+        ElectronCountsHigh2 = np.sum(dratedTSMHigh2*dTSMHigh)*2500*86400
+        ElectronCountsMid2 = np.sum(dratedTSMMid2*dTSMMid)*2500*86400
+        ElectronCountsLow2 = np.sum(dratedTSMLow2*dTSMLow)*2500*86400
+        
+        ElectronCountsHigh2NoAng = np.sum(dratedTSMHigh2NoAng*dTSMHigh)*2500*86400
+        ElectronCountsMid2NoAng = np.sum(dratedTSMMid2NoAng*dTSMMid)*2500*86400
+        ElectronCountsLow2NoAng = np.sum(dratedTSMLow2NoAng*dTSMLow)*2500*86400
+        
+        exclude_prod_High2 = guess_prod * (des_Events_eHigh/ElectronCountsHigh2)**(1/4)
+        exclude_prod_Mid2 = guess_prod * (des_Events_eMid/ElectronCountsMid2)**(1/4)
+        exclude_prod_Low2 = guess_prod * (des_Events_eLow/ElectronCountsLow2)**(1/4)
+        
+        exclude_prod_High2NoAng = guess_prod * (des_Events_eHigh_NoAng/ElectronCountsHigh2NoAng)**(1/4)
+        exclude_prod_Mid2NoAng = guess_prod * (des_Events_eMid_NoAng/ElectronCountsMid2NoAng)**(1/4)
+        exclude_prod_Low2NoAng = guess_prod * (des_Events_eLow/ElectronCountsLow2NoAng)**(1/4)
+        
+        if (np.min([exclude_prod_High2,exclude_prod_Mid2,exclude_prod_Low2]) 
+            >np.min([exclude_prod_High2NoAng,exclude_prod_Mid2NoAng,exclude_prod_Low2NoAng])):
+            print("Chi 2: Angular Cut Worse")
+        
+        coup2 = np.min([exclude_prod_High2,exclude_prod_Mid2,exclude_prod_Low2,
+                        exclude_prod_High2NoAng,exclude_prod_Mid2NoAng,exclude_prod_Low2NoAng])
+        if coup2 == np.inf:
+            coup2 = 1e10
+        
+        CouplingExclude2[mDM_index,delta_index] = coup2
+        
+        
+        dE1 = E1vals[1:]-E1vals[:-1]
+        dE1 = np.append(dE1,dE1[-1])
+        
+        dsigma1dTSMHigh = dsigmaChi1dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E1vals,TSMvalsHigh,mSM = 9.1e-4,Lambda = 1e10)
+        dsigma1dTSMMid = dsigmaChi1dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E1vals,TSMvalsMid,mSM = 9.1e-4,Lambda = 1e10)
+        dsigma1dTSMLow = dsigmaChi1dTSMFiniteMass(gchi,gSM,mZ,mDM,delta,E1vals,TSMvalsLow,mSM = 9.1e-4,Lambda = 1e10)
+        
+        cosTheta1High = (delta**2 + 2*TSMvalsHigh*E1vals + 2*delta*mDM)\
+            /(2*TSMvalsHigh * sqrt(E1vals**2 - mDM**2))
+        cosTheta1Mid = (delta**2 + 2*TSMvalsMid*E1vals + 2*delta*mDM)\
+            /(2*TSMvalsMid * sqrt(E1vals**2 - mDM**2))
+        cosTheta1Low = (delta**2 + 2*TSMvalsLow*E1vals + 2*delta*mDM)\
+            /(2*TSMvalsLow * sqrt(E1vals**2 - mDM**2))
+            
+        AngleReq1High = np.heaviside(cosTheta1High - cos(ThetaMaxHigh),1)
+        AngleReq1Mid = np.heaviside(cosTheta1Mid - cos(ThetaMaxMid),1)
+        AngleReq1Low = np.heaviside(cosTheta1Low - cos(ThetaMaxLow),1)
+        
+        dratedTSMHigh1 = num_protons * np.sum(dPhi1dE1*dsigma1dTSMHigh*dE1
+                                            *AngleReq1High, axis = 1)
+        dratedTSMMid1 = num_protons * np.sum(dPhi1dE1*dsigma1dTSMMid*dE1
+                                            *AngleReq1Mid, axis = 1)
+        dratedTSMLow1 = num_protons * np.sum(dPhi1dE1*dsigma1dTSMLow*dE1
+                                            *AngleReq1Low, axis = 1)
+        
+        dratedTSMHigh1NoAng = num_protons * np.sum(dPhi1dE1*dsigma1dTSMHigh*dE1, axis = 1)
+        dratedTSMMid1NoAng = num_protons * np.sum(dPhi1dE1*dsigma1dTSMMid*dE1, axis = 1)
+        dratedTSMLow1NoAng = num_protons * np.sum(dPhi1dE1*dsigma1dTSMLow*dE1, axis = 1)
+        
+        ElectronCountsHigh1 = np.sum(dratedTSMHigh1*dTSMHigh)*2500*86400
+        ElectronCountsMid1 = np.sum(dratedTSMMid1*dTSMMid)*2500*86400
+        ElectronCountsLow1 = np.sum(dratedTSMLow1*dTSMLow)*2500*86400
+        
+        ElectronCountsHigh1NoAng = np.sum(dratedTSMHigh1NoAng*dTSMHigh)*2500*86400
+        ElectronCountsMid1NoAng = np.sum(dratedTSMMid1NoAng*dTSMMid)*2500*86400
+        ElectronCountsLow1NoAng = np.sum(dratedTSMLow1NoAng*dTSMLow)*2500*86400
+        
+        exclude_prod_High1 = guess_prod * (des_Events_eHigh/ElectronCountsHigh1)**(1/4)
+        exclude_prod_Mid1 = guess_prod * (des_Events_eMid/ElectronCountsMid1)**(1/4)
+        exclude_prod_Low1 = guess_prod * (des_Events_eLow/ElectronCountsLow1)**(1/4)
+        
+        exclude_prod_High1NoAng = guess_prod * (des_Events_eHigh_NoAng/ElectronCountsHigh1NoAng)**(1/4)
+        exclude_prod_Mid1NoAng = guess_prod * (des_Events_eMid_NoAng/ElectronCountsMid1NoAng)**(1/4)
+        exclude_prod_Low1NoAng = guess_prod * (des_Events_eLow/ElectronCountsLow1NoAng)**(1/4)
+        
+        if (np.min([exclude_prod_High1,exclude_prod_Mid1,exclude_prod_Low1]) 
+            >np.min([exclude_prod_High1NoAng,exclude_prod_Mid1NoAng,exclude_prod_Low1NoAng])):
+            print("Chi 1: Angular Cut Worse")
+        
+        coup1 = np.min([exclude_prod_High1,exclude_prod_Mid1,exclude_prod_Low1,
+                        exclude_prod_High1NoAng,exclude_prod_Mid1NoAng,exclude_prod_Low1NoAng])
+        
+        if coup1 == np.inf:
+            print("PROBLEM - INFINITY")
+            #coup1 = 1e20
+        
+        
+        print("coup 1", coup1, "coup 2",coup2)
+        CouplingExclude1[mDM_index,delta_index] = coup1
+        
+
+fig, ax = plt.subplots()
+
+CS = ax.contourf(mDMlist,deltaVals,np.log10(np.transpose(CouplingExclude1)))
+
+CB = fig.colorbar(CS)
+CB.set_label("$\mathrm{log}_{10}(g_{SM} g_{DM})$")
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel("$m_{\mathrm{DM}}$ [GeV]")
+plt.ylabel("$\delta$ [GeV]")
+
+plt.title(source + " ; $m_{Z'}$ = "+str(mZ)+ "GeV")
+'''
+
 '''
 fig = plt.figure("SK Exclusions No Decay")
 if source == "TXS":
