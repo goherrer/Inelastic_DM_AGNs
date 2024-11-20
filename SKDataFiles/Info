@@ -1,0 +1,10 @@
+All exposures are 2500 days with 22.5 kton of H20
+The electron energy ranges are 0.3-1.33 GeV, 1.33-20 GeV, and 20-1000 GeV
+Angular cuts for electrons are 24, 7, and 5 degrees respectively
+With the angular cuts, the desired electron events are 20, 4.5, and 3
+Without angular cuts, 126, 51, 6
+
+For elastic proton scattering, we set constraints at 80 events with momentum between 1.2 and 3 GeV
+For DIS proton scattering, we set constraints at 114 events
+
+To rescale any of these, note that the number of events will go as (g_{chi}*g_{SM})^{4}
