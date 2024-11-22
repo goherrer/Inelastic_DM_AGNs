@@ -379,7 +379,7 @@ def Chi2DecRate(gSM_mZ,gChi_mZ,mDM,delta):
     return(Gamma*GeV_to_Inv_Sec)
     
 
-def BlackHoleIntDensity(MBH,mDM):
+def BlackHoleIntDensity(MBH,mDM,Rprod=0):
     '''
     Function to determine the integrated number density of dark matter
         around a black hole
@@ -387,6 +387,8 @@ def BlackHoleIntDensity(MBH,mDM):
     Parameters
     ----------
     MBH : Mass of Black Hole [Solar Mass]
+    mDM: Mass of dark matter [GeV]
+    Rprod : Location of production (in units of Rschw)
 
     Returns
     -------
@@ -401,16 +403,20 @@ def BlackHoleIntDensity(MBH,mDM):
     Rmin = 4*Rschw  # cm
     Rmax = 1e5*Rschw  # cm
     Rchar = 10*Rschw  # cm (This is chosen arbitrarily)
+    Rprod = Rprod*Rschw
+    if Rprod < Rmin:
+        Rprod = Rmin
+    
     rho0 = MBH / (6 * pi * Rchar**(7/3) *
                   (Rmax**(2/3) - Rmin**(2/3)))  # kg cm^{-3}
     rho0 = 5.6e26 * rho0  # GeV cm^{-3}
     tot_integrated_density = (3/4) * rho0 * (Rchar**(7/3) /
-                                             Rmin**(4/3) - Rchar**(7/3)/Rmax**(4/3))  # GeV cm^{-2}
+                                             Rprod**(4/3) - Rchar**(7/3)/Rmax**(4/3))  # GeV cm^{-2}
     tot_int_num_dens = tot_integrated_density/mDM  # cm^{-2}
     
     return(tot_int_num_dens)
     
-def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals,cutoff = 0):
+def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals,cutoff = 0,gammaprimecut = 5.5e7):
     '''
     Function to calculate Rate of protons
 
@@ -435,7 +441,12 @@ def AGNProtonRate(Gamma_B,alpha_p,cp,mu,ESMvals,cutoff = 0):
     prefactor = 1/(4*pi) * (1 + TSMvals/mp)**(-alpha_p)
     numerator = Gamma_B**(-alpha_p) * Beta_p_vals * (1 - Beta_B*Beta_p_vals*mu)**(-alpha_p)
     denominator = np.sqrt((1 - Beta_B*Beta_p_vals*mu)**2 - (1 - Beta_p_vals**2) * (1-Beta_B**2))
-    dNSMdESM = cp*prefactor * numerator/denominator * np.heaviside(ESMvals-cutoff,0) #GeV ^{-1} s^{-1} sr^{-1}
+    gammaprime = (1- Beta_B*Beta_p_vals*mu)*Gamma_p_vals*Gamma_B
+    
+    dNSMdESM = cp*prefactor * numerator/denominator \
+        * np.heaviside(ESMvals-cutoff,0)*np.heaviside(gammaprimecut-gammaprime,0) #GeV ^{-1} s^{-1} sr^{-1}
+    
+    
     
     return(dNSMdESM)
 
